@@ -17,7 +17,7 @@ def run_file(file_path):
     subprocess.run(['python3', file_path])
 
 def main():
-    source_file = 'dz1.py'
+    source_file = 'dz2_1.py'
     destination_file = 'dz1_run.py'
     prepend_text = "#!/usr/bin/env python3\n# This file is auto-generated."
 
