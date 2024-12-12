@@ -12,3 +12,18 @@ services:
     environment:
       - FLASK_ENV=development
     command: ["python", "app.py"]
+  postgres:
+    image: postgres:latest
+    container_name: postgres_container
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
