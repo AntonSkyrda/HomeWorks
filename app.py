@@ -1,22 +1,16 @@
 from datetime import datetime
 import random
 import string
-import psycopg2
-import json
 
-from flask import Flask, request, redirect
+from flask import Flask, request, redirect, jsonify
+from sqlalchemy import select
 
 from form import create_form
+from models import Course, Lesson, User, Homework, HomeworkResponse, HomeworkGrade
+from database import session
+
 
 app = Flask(__name__)
-
-conn = psycopg2.connect(
-    database="postgres",
-    user="postgres",
-    host="postgres_container",
-    password="postgres",
-    port="5432",
-)
 
 
 @app.route("/whoami")
@@ -68,168 +62,197 @@ def random_string():
         return {"error": "Invalid input"}, 400
 
 
-@app.route("/register", methods=["POST", "GET"])
+@app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        body = request.form
-        with conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO users (email, password, first_name, last_name) VALUES (%s, %s, %s, %s);",
-                (
-                    body["email"],
-                    body["password"],
-                    body["first_name"],
-                    body["last_name"],
-                ),
-            )
-            conn.commit()
-        return redirect("/users", code=302)
+        data = request.form
+        user = User(
+            email=data["email"],
+            password=data["password"],
+            first_name=data["first_name"],
+            last_name=data["last_name"],
+            phone=data["phone"],
+        )
+        session.add(user)
+        session.commit()
+        return (
+            jsonify(
+                {
+                    "id": user.id,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "phone": user.phone,
+                },
+            ),
+            201,
+        )
+    return create_form("email", "password", "first_name", "last_name", "phone")
 
-    return create_form("email", "password", "first_name", "last_name")
 
-
-@app.route("/users")
+@app.route("/users", methods=["GET"])
 def get_users():
-    with conn.cursor() as cur:
-        cur.execute("SELECT * FROM users;")
-        return json.dumps(cur.fetchall())
+    users = session.execute(select(User)).scalars().all()
+    return jsonify(
+        [
+            {
+                "id": user.id,
+                "email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "phone": user.phone,
+            }
+            for user in users
+        ]
+    )
 
 
-@app.route("/courses")
+@app.route("/courses", methods=["GET"])
 def get_courses():
-    with conn.cursor() as cur:
-        cur.execute("SELECT * FROM course;")
-        return json.dumps(cur.fetchall())
+    courses = session.execute(select(Course)).scalars().all()
+    return jsonify(
+        [
+            {"id": course.id, "title": course.title, "teacher_id": course.teacher_id}
+            for course in courses
+        ]
+    )
 
 
-@app.route("/courses/create", methods=["POST", "GET"])
+@app.route("/courses/create", methods=["GET", "POST"])
 def create_course():
     if request.method == "POST":
-        body = request.form
-        with conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO course (name, teacher_id) VALUES (%s, %s) RETURNING id;",
-                (
-                    body["name"],
-                    body["teacher_id"],
-                ),
-            )
-            course_id = cur.fetchone()[0]
-
-            student_ids = body.getlist("student_ids")
-            for student_id in student_ids:
-                cur.execute(
-                    "INSERT INTO course_students (course_id, student_id) VALUES (%s, %s);",
-                    (course_id, student_id),
-                )
-            conn.commit()
-        return redirect("/courses", code=302)
-
-    return create_form("name", "teacher_id", "student_ids")
+        data = request.form
+        course = Course(title=data["title"], teacher_id=data["teacher_id"])
+        session.add(course)
+        session.commit()
+        return jsonify({"id": course.id, "title": course.title}), 201
+    return create_form("title", "teacher_id")
 
 
-@app.route("/courses/<course_id>")
+@app.route("/courses/<int:course_id>", methods=["GET"])
 def get_course(course_id):
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT course.*, 
-                   json_agg(DISTINCT student) AS students, 
-                   json_agg(DISTINCT lesson) AS lessons, 
-                   json_agg(DISTINCT task) AS tasks 
-            FROM course 
-            LEFT JOIN course_students ON course.id = course_students.course_id 
-            LEFT JOIN users AS student ON course_students.student_id = student.id 
-            LEFT JOIN lesson ON lesson.course_id = course.id 
-            LEFT JOIN task ON task.course_id = course.id 
-            WHERE course.id = %s 
-            GROUP BY course.id;
-            """,
-            (course_id,),
+    course = session.get(Course, course_id)
+    if not course:
+        return "Course not found", 404
+    return jsonify(
+        {
+            "id": course.id,
+            "title": course.title,
+            "teacher_id": course.teacher_id,
+            "students": [student.id for student in course.students],
+            "lectures": [
+                {"id": lecture.id, "title": lecture.title} for lecture in course.lessons
+            ],
+            "tasks": [
+                {"id": task.id, "description": task.description}
+                for task in course.homeworks
+            ],
+        }
+    )
+
+
+@app.route("/courses/<int:course_id>/lectures", methods=["GET", "POST"])
+def manage_lectures(course_id):
+    if request.method == "POST":
+        data = request.form
+        lecture = Lesson(
+            title=data["title"], description=data["description"], course_id=course_id
         )
-        return json.dumps(cur.fetchone())
+        session.add(lecture)
+        session.commit()
+        return jsonify({"id": lecture.id, "title": lecture.title}), 201
+    return create_form("title", "description")
 
 
-@app.route("/courses/<course_id>/lectures", methods=["POST", "GET"])
-def add_lectures(course_id):
+@app.route("/courses/<int:course_id>/tasks", methods=["GET", "POST"])
+def manage_tasks(course_id):
     if request.method == "POST":
-        body = request.form
-        with conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO lesson (course_id, name, description) VALUES (%s, %s, %s);",
-                (course_id, body["name"], body["description"]),
-            )
-            conn.commit()
-        return redirect(f"/courses/{course_id}", code=302)
+        data = request.form
+        task = Homework(
+            description=data["description"],
+            max_score=data["max_score"],
+            course_id=course_id,
+        )
+        session.add(task)
+        session.commit()
+        return jsonify({"id": task.id, "description": task.description}), 201
+    return create_form("description", "max_score")
 
-    return create_form("name", "description")
 
-
-@app.route("/courses/<course_id>/tasks", methods=["POST", "GET"])
-def create_task(course_id):
+@app.route(
+    "/courses/<int:course_id>/tasks/<int:task_id>/answers", methods=["GET", "POST"]
+)
+def manage_answers(course_id, task_id):
     if request.method == "POST":
-        body = request.form
-        with conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO task (course_id, description) VALUES (%s, %s);",
-                (course_id, body["description"]),
-            )
-            conn.commit()
-        return redirect(f"/courses/{course_id}", code=302)
-
-    return create_form("description")
-
-
-@app.route("/courses/<course_id>/tasks/<task_id>/answers", methods=["POST", "GET"])
-def submit_answer(course_id, task_id):
-    if request.method == "POST":
-        body = request.form
-        with conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO answer (task_id, student_id, description) VALUES (%s, %s, %s);",
-                (task_id, body["student_id"], body["description"]),
-            )
-            conn.commit()
-        return redirect(f"/courses/{course_id}/tasks/{task_id}/answers", code=302)
-
+        data = request.form
+        answer = HomeworkResponse(
+            description=data["description"],
+            student_id=data["student_id"],
+            homework_id=task_id,
+        )
+        session.add(answer)
+        session.commit()
+        return jsonify({"id": answer.id, "description": answer.description}), 201
     return create_form("description", "student_id")
 
 
 @app.route(
-    "/courses/<course_id>/tasks/<task_id>/answers/<answer_id>/mark",
-    methods=["POST", "GET"],
+    "/courses/<int:course_id>/tasks/<int:task_id>/answers/<int:answer_id>/mark",
+    methods=["GET", "POST"],
 )
-def mark_answer(course_id, task_id, answer_id):
+def grade_answer(course_id, task_id, answer_id):
     if request.method == "POST":
-        body = request.form
-        with conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO mark (answer_id, teacher_id, date, grade) VALUES (%s, %s, %s, %s);",
-                (answer_id, body["teacher_id"], datetime.now(), body["grade"]),
-            )
-            conn.commit()
-        return redirect(f"/courses/{course_id}", code=302)
-
-    return create_form("teacher_id", "grade")
-
-
-@app.route("/courses/<course_id>/rating", methods=["POST", "GET"])
-def course_rating(course_id):
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT student.id, student.first_name, student.last_name, AVG(mark.grade) AS avg_grade 
-            FROM users AS student 
-            JOIN course_students ON course_students.student_id = student.id 
-            JOIN answer ON answer.student_id = student.id 
-            JOIN mark ON mark.answer_id = answer.id 
-            WHERE course_students.course_id = %s 
-            GROUP BY student.id 
-            ORDER BY avg_grade DESC;
-            """,
-            (course_id,),
+        data = request.form
+        grade = HomeworkGrade(
+            date=data["date"],
+            score=data["score"],
+            teacher_id=data["teacher_id"],
+            response_id=answer_id,
         )
-        return json.dumps(cur.fetchall())
+        session.add(grade)
+        session.commit()
+        return jsonify({"id": grade.id, "score": grade.score}), 201
+    return create_form("date", "score", "teacher_id")
+
+
+@app.route("/courses/<int:course_id>/rating", methods=["GET"])
+def get_course_rating(course_id):
+    students = {}
+    tasks = (
+        session.execute(select(Homework).where(Homework.course_id == course_id))
+        .scalars()
+        .all()
+    )
+    for task in tasks:
+        responses = (
+            session.execute(
+                select(HomeworkResponse).where(HomeworkResponse.homework_id == task.id)
+            )
+            .scalars()
+            .all()
+        )
+        for response in responses:
+            grades = (
+                session.execute(
+                    select(HomeworkGrade).where(
+                        HomeworkGrade.response_id == response.id
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            scores = [grade.score for grade in grades]
+            if scores:
+                if response.student_id not in students:
+                    students[response.student_id] = []
+                students[response.student_id].extend(scores)
+
+    rating = [
+        {"student_id": student_id, "average_score": sum(scores) / len(scores)}
+        for student_id, scores in students.items()
+    ]
+    rating.sort(key=lambda x: x["average_score"], reverse=True)
+    return jsonify(rating)
 
 
 if __name__ == "__main__":
