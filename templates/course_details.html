@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Course Details{% endblock %}
+
+{% block content %}
+<h2>Course: {{ course.title }}</h2>
+<p><strong>Teacher:</strong> {{ course.teacher_id }}</p>
+<p><strong>Students:</strong></p>
+<ul>
+    {% for student in course.students %}
+    <li>{{ student.first_name }} {{ student.last_name }}</li>
+    {% endfor %}
+</ul>
+<p><strong>Lectures:</strong></p>
+<ul>
+    {% for lecture in course.lectures %}
+    <li>{{ lecture.title }}</li>
+    {% endfor %}
+</ul>
+<p><strong>Tasks:</strong></p>
+<ul>
+    {% for task in course.tasks %}
+    <li>{{ task.description }}</li>
+    {% endfor %}
+</ul>
+{% endblock %}

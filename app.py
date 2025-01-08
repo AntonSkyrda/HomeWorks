@@ -2,7 +2,7 @@ from datetime import datetime
 import random
 import string
 
-from flask import Flask, request, redirect, jsonify
+from flask import Flask, request, redirect, render_template, url_for
 from sqlalchemy import select
 
 from form import create_form
@@ -11,6 +11,11 @@ from database import session
 
 
 app = Flask(__name__)
+
+
+@app.route("/")
+def index():
+    return render_template("index.html")
 
 
 @app.route("/whoami")
@@ -75,47 +80,21 @@ def register():
         )
         session.add(user)
         session.commit()
-        return (
-            jsonify(
-                {
-                    "id": user.id,
-                    "email": user.email,
-                    "first_name": user.first_name,
-                    "last_name": user.last_name,
-                    "phone": user.phone,
-                },
-            ),
-            201,
-        )
-    return create_form("email", "password", "first_name", "last_name", "phone")
+        return redirect(url_for("get_users"))
+    form = create_form("email", "password", "first_name", "last_name", "phone")
+    return render_template("register.html", form=form)
 
 
 @app.route("/users", methods=["GET"])
 def get_users():
     users = session.execute(select(User)).scalars().all()
-    return jsonify(
-        [
-            {
-                "id": user.id,
-                "email": user.email,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "phone": user.phone,
-            }
-            for user in users
-        ]
-    )
+    return render_template("users.html", users=users)
 
 
 @app.route("/courses", methods=["GET"])
 def get_courses():
     courses = session.execute(select(Course)).scalars().all()
-    return jsonify(
-        [
-            {"id": course.id, "title": course.title, "teacher_id": course.teacher_id}
-            for course in courses
-        ]
-    )
+    return render_template("courses.html", courses=courses)
 
 
 @app.route("/courses/create", methods=["GET", "POST"])
@@ -125,8 +104,9 @@ def create_course():
         course = Course(title=data["title"], teacher_id=data["teacher_id"])
         session.add(course)
         session.commit()
-        return jsonify({"id": course.id, "title": course.title}), 201
-    return create_form("title", "teacher_id")
+        return redirect(url_for("get_courses"))
+    form = create_form("title", "teacher_id")
+    return render_template("create_course.html", form=form)
 
 
 @app.route("/courses/<int:course_id>", methods=["GET"])
@@ -134,21 +114,7 @@ def get_course(course_id):
     course = session.get(Course, course_id)
     if not course:
         return "Course not found", 404
-    return jsonify(
-        {
-            "id": course.id,
-            "title": course.title,
-            "teacher_id": course.teacher_id,
-            "students": [student.id for student in course.students],
-            "lectures": [
-                {"id": lecture.id, "title": lecture.title} for lecture in course.lessons
-            ],
-            "tasks": [
-                {"id": task.id, "description": task.description}
-                for task in course.homeworks
-            ],
-        }
-    )
+    return render_template("course_details.html", course=course)
 
 
 @app.route("/courses/<int:course_id>/lectures", methods=["GET", "POST"])
@@ -160,8 +126,14 @@ def manage_lectures(course_id):
         )
         session.add(lecture)
         session.commit()
-        return jsonify({"id": lecture.id, "title": lecture.title}), 201
-    return create_form("title", "description")
+        return redirect(url_for("manage_lectures", course_id=course_id))
+    lectures = (
+        session.execute(select(Lesson).where(Lesson.course_id == course_id))
+        .scalars()
+        .all()
+    )
+    form = create_form("title", "description")
+    return render_template("add_lecture.html", lectures=lectures, form=form)
 
 
 @app.route("/courses/<int:course_id>/tasks", methods=["GET", "POST"])
@@ -175,8 +147,14 @@ def manage_tasks(course_id):
         )
         session.add(task)
         session.commit()
-        return jsonify({"id": task.id, "description": task.description}), 201
-    return create_form("description", "max_score")
+        return redirect(url_for("manage_tasks", course_id=course_id))
+    tasks = (
+        session.execute(select(Homework).where(Homework.course_id == course_id))
+        .scalars()
+        .all()
+    )
+    form = create_form("description", "max_score")
+    return render_template("add_task.html", tasks=tasks, form=form)
 
 
 @app.route(
@@ -192,8 +170,16 @@ def manage_answers(course_id, task_id):
         )
         session.add(answer)
         session.commit()
-        return jsonify({"id": answer.id, "description": answer.description}), 201
-    return create_form("description", "student_id")
+        return redirect(url_for("manage_answers", course_id=course_id, task_id=task_id))
+    answers = (
+        session.execute(
+            select(HomeworkResponse).where(HomeworkResponse.homework_id == task_id)
+        )
+        .scalars()
+        .all()
+    )
+    form = create_form("description", "student_id")
+    return render_template("add_answer.html", answers=answers, form=form)
 
 
 @app.route(
@@ -211,8 +197,23 @@ def grade_answer(course_id, task_id, answer_id):
         )
         session.add(grade)
         session.commit()
-        return jsonify({"id": grade.id, "score": grade.score}), 201
-    return create_form("date", "score", "teacher_id")
+        return redirect(
+            url_for(
+                "grade_answer",
+                course_id=course_id,
+                task_id=task_id,
+                answer_id=answer_id,
+            )
+        )
+    grades = (
+        session.execute(
+            select(HomeworkGrade).where(HomeworkGrade.response_id == answer_id)
+        )
+        .scalars()
+        .all()
+    )
+    form = create_form("date", "score", "teacher_id")
+    return render_template("grade_answer.html", grades=grades, form=form)
 
 
 @app.route("/courses/<int:course_id>/rating", methods=["GET"])
@@ -252,8 +253,8 @@ def get_course_rating(course_id):
         for student_id, scores in students.items()
     ]
     rating.sort(key=lambda x: x["average_score"], reverse=True)
-    return jsonify(rating)
+    return render_template("rating.html", rating=rating)
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=False)
+    app.run(debug=True)

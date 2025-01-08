@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}Course Rating{% endblock %}
+
+{% block content %}
+<h2>Course Rating</h2>
+<ul>
+    {% for student in rating %}
+    <li>{{ student.student_id }} - Average Score: {{ student.average_score }}</li>
+    {% endfor %}
+</ul>
+{% endblock %}
