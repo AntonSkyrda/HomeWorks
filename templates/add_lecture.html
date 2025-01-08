@@ -1,10 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Add Lecture{% endblock %}
+
+{% block content %}
+<h2>Add a Lecture to Course</h2>
+{{ form | safe }}
+{% endblock %}
