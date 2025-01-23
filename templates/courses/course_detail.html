@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="course-details">
+    <h1>{{ course.name }}</h1>
+    <p>{{ course.description }}</p>
+
+    <h2>Teacher:</h2>
+    <p>{{ course.teacher.first_name }} {{ course.teacher.last_name }}</p>
+
+    <h2>Students:</h2>
+    <ul>
+        {% for student in course.student.all %}
+        <li>{{ student.first_name }} {{ student.last_name }} ({{ student.email }})</li>
+        {% empty %}
+        <li>Any students yet</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Lessons:</h2>
+    <ul>
+        {% for lesson in course.lessons.all %}
+        <li>
+            <strong>{{ lesson.title }}</strong>: {{ lesson.description }}
+        </li>
+        {% empty %}
+        <li>Any lessons yet</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Tasks:</h2>
+    <ul>
+        {% for task in course.task_set.all %}
+        <li>
+            <strong>{{ task.description }}</strong> (Max mark: {{ task.max_marks }})
+        </li>
+        {% empty %}
+        <li>Any tasks yet</li>
+        {% endfor %}
+    </ul>
+</div>
+
+{% endblock %}
