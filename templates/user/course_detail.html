@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% load custom_filters %}
+
+{% block title %}{{ course.name }}{% endblock %}
+
+{% block content %}
+  <div class="container course-detail">
+    <h2 class="course-name">{{ course.name }}</h2>
+    <p class="course-description">{{ course.description }}</p>
+
+    <h3>Assignments</h3>
+    <ul class="task-list">
+      {% for task in tasks %}
+        <li class="task-item">
+          <strong>{{ task.description }}</strong>
+          {% if task_grades|get_item:task.id %}
+            <p class="task-grade">Grade: {{ task_grades|get_item:task.id }}</p>
+          {% else %}
+            <a href="{% url 'user:submit_task_answer' course.id task.id %}" class="btn submit-answer-btn">Submit Answer</a>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endblock %}

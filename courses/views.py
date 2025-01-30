@@ -1,6 +1,10 @@
-from django.views.generic import ListView, DetailView
+from django.views.generic import ListView, DetailView, TemplateView
 
 from .models import Course
+
+
+class IndexView(TemplateView):
+    template_name = "courses/index.html"
 
 
 class CourseListView(ListView):

@@ -9,5 +9,18 @@
         <li><a href="/courses/">Courses</a></li>
       </ul>
     </nav>
+    <div class="auth-links">
+      {% if user.is_authenticated %}
+          <span>Welcome, {{ user.email }}!</span>
+          <a href="{% url 'user:dashboard' %}" class="btn dashboard-btn">Dashboard</a>
+          <form action="{% url 'user:logout' %}" method="post" style="display: inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn logout-btn">Logout</button>
+          </form>
+      {% else %}
+          <a href="{% url 'user:login' %}" class="btn login-btn">Login</a>
+          <a href="{% url 'user:register' %}" class="btn register-btn">Register</a>
+      {% endif %}
+    </div>
   </div>
 </header>
