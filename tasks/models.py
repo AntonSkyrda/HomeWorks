@@ -20,7 +20,7 @@ class Task(models.Model):
 class TaskAnswer(models.Model):
     description = models.TextField(_("Answer description"))
     task = models.ForeignKey(Task, on_delete=models.CASCADE)
-    mark = models.PositiveIntegerField(_("Task mark"))
+    mark = models.PositiveIntegerField(_("Task mark"), blank=True, null=True)
     student = models.ForeignKey(User, on_delete=models.CASCADE)
 
     def __str__(self):

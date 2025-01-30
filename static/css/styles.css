@@ -101,27 +101,36 @@ li.empty {
 .site-header {
     background-color: #333;
     color: white;
-    padding: 20px 0;
+    padding: 15px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.site-header .container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 .site-header .logo a {
-    font-size: 2em;
+    font-size: 1.8em;
     color: white;
     text-decoration: none;
-}
-
-.site-header .navbar {
-    text-align: right;
+    font-weight: bold;
 }
 
 .site-header .navbar ul {
     list-style-type: none;
     margin: 0;
     padding: 0;
+    display: flex;
 }
 
 .site-header .navbar ul li {
-    display: inline-block;
     margin-left: 20px;
 }
 
@@ -135,12 +144,47 @@ li.empty {
     text-decoration: underline;
 }
 
+.auth-links {
+    display: flex;
+    align-items: center;
+}
+
+.auth-links span {
+    margin-right: 15px;
+    font-size: 1em;
+    color: white;
+}
+
+.btn {
+    background-color: #007bff;
+    color: white;
+    padding: 8px 15px;
+    border-radius: 5px;
+    text-decoration: none;
+    margin-left: 10px;
+    border: none;
+    cursor: pointer;
+}
+
+.btn:hover {
+    background-color: #0056b3;
+}
+
+.logout-btn {
+    background-color: #dc3545;
+}
+
+.logout-btn:hover {
+    background-color: #a71d2a;
+}
+
 .site-footer {
     background-color: #333;
     color: white;
     padding: 20px 0;
     text-align: center;
     margin-top: auto;
+    width: 100%;
 }
 
 .site-footer p {
@@ -158,5 +202,191 @@ li.empty {
 
 .site-footer .footer-links a:hover {
     text-decoration: underline;
+}
+
+.auth-container {
+    width: 100%;
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 20px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.auth-container h2 {
+    margin-bottom: 20px;
+    font-size: 1.8em;
+    color: #333;
+}
+
+.form-group {
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+    font-size: 1em;
+    color: #333;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1em;
+    color: #333;
+    background-color: #f9f9f9;
+}
+
+.form-group input:focus {
+    border-color: #007bff;
+    outline: none;
+    background-color: #fff;
+}
+
+.error {
+    color: red;
+    font-size: 0.9em;
+}
+
+.error-message {
+    margin: 5px 0;
+}
+
+.btn {
+    width: 100%;
+    padding: 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.btn:hover {
+    background-color: #0056b3;
+}
+
+.site-header .navbar ul li a.active {
+    border-bottom: 3px solid #007bff;
+    font-weight: bold;
+}
+
+.tooltip {
+    position: absolute;
+    background-color: #333;
+    color: white;
+    padding: 5px;
+    border-radius: 5px;
+    font-size: 0.9em;
+    display: none;
+    z-index: 1000;
+}
+
+[data-tooltip]:hover .tooltip {
+    display: block;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+.modal-content {
+    position: relative;
+    margin: 15% auto;
+    padding: 20px;
+    background-color: white;
+    max-width: 500px;
+    border-radius: 8px;
+}
+
+.close-modal {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 1.5em;
+    color: #333;
+    cursor: pointer;
+}
+
+.close-modal:hover {
+    color: #007bff;
+}
+
+.card {
+    background-color: #fff;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.card-header {
+    font-size: 1.5em;
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.card-body {
+    font-size: 1em;
+    color: #555;
+}
+
+@media (max-width: 768px) {
+    .site-header .container {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .site-header .logo a {
+        font-size: 1.5em;
+    }
+
+    .site-header .navbar ul {
+        flex-direction: column;
+        margin-top: 15px;
+    }
+
+    .site-header .navbar ul li {
+        margin: 10px 0;
+    }
+
+    .container {
+        width: 100%;
+        padding: 10px;
+    }
+
+    .course-details, .course-list, .auth-container {
+        width: 100%;
+        padding: 15px;
+    }
+
+    .form-group input {
+        font-size: 1.2em;
+    }
+
+    .btn {
+        font-size: 1.2em;
+    }
+}
+
+@media (max-width: 768px) {
+    .btn {
+        padding: 12px 20px;
+        font-size: 1.1em;
+    }
 }
 
